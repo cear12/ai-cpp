@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  neural-network:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -S neural-network -B build-nn -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        run: cmake --build build-nn --config Release
+      - name: Run (trains XOR, prints PASS/FAIL per check, exits non-zero on failure)
+        shell: bash
+        run: |
+          if [ -f build-nn/Release/neural_network.exe ]; then
+            build-nn/Release/neural_network.exe
+          else
+            build-nn/neural_network
+          fi
+
+  opencv-vision:
+    # OpenCV (plus the contrib tracking module object-tracker.h needs) is a
+    # plain apt install on Ubuntu; getting it onto Windows/macOS runners
+    # needs extra third-party actions, so -- same call as protocols-cpp and
+    # qt-cpp elsewhere in this portfolio -- CI targets ubuntu-latest only.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install OpenCV (including contrib, for the tracking module)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libopencv-dev libopencv-contrib-dev opencv-data
+
+      - name: Populate data/ with Haar cascades from the system OpenCV install
+        run: |
+          mkdir -p opencv-vision/data
+          face=$(find /usr/share -iname 'haarcascade_frontalface_alt.xml' 2>/dev/null | head -1)
+          eyes=$(find /usr/share -iname 'haarcascade_eye_tree_eyeglasses.xml' 2>/dev/null | head -1)
+          if [ -n "$face" ]; then cp "$face" opencv-vision/data/; fi
+          if [ -n "$eyes" ]; then cp "$eyes" opencv-vision/data/; fi
+          ls -la opencv-vision/data/
+
+      - name: Configure
+        run: cmake -S opencv-vision -B build-cv -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build-cv --config Release -j"$(nproc)"
+
+      # No camera/display in CI, so this only verifies the build -- see the
+      # repository README for what is and isn't exercised without real
+      # hardware and a display.
+      - name: Verify the binary was produced
+        run: test -x build-cv/opencv_vision
