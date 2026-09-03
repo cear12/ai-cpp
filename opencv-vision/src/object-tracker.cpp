@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <random>
+#include <string>
 
 ObjectTracker::ObjectTracker() {}
 

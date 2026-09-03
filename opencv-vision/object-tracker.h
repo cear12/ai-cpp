@@ -3,8 +3,9 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/tracking.hpp>
 
-#include <vector>
 #include <memory>
+#include <string>
+#include <vector>
 
 class ObjectTracker {
 private:
