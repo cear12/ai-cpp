@@ -5,6 +5,7 @@
 #include <random>
 #include <iostream>
 #include <algorithm>
+#include <string>
 
 class NeuralNetwork {
 private:
@@ -29,8 +30,8 @@ public:
     
     // Core functions
     std::vector<double> feedForward(const std::vector<double>& inputs);
-    void backPropagate(const std::vector<double>& inputs, 
-                      const std::vector<double>& targets);
+    std::vector<double> backPropagate(const std::vector<double>& inputs,
+                                       const std::vector<double>& targets);
     void train(const std::vector<std::vector<double>>& inputs,
               const std::vector<std::vector<double>>& targets,
               int epochs);

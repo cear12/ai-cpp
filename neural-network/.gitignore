@@ -1,0 +1,7 @@
+build/
+*.o
+*.exe
+xor_model.txt
+compile_commands.json
+CMakeFiles/
+CMakeCache.txt

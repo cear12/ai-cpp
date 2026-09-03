@@ -1,6 +1,7 @@
 #include "../neural-network.h"
 
 #include <fstream>
+#include <iomanip>
 #include <sstream>
 
 NeuralNetwork::NeuralNetwork(const std::vector<int>& topology, double lr)
@@ -73,8 +74,8 @@ std::vector<double> NeuralNetwork::feedForward(const std::vector<double>& inputs
     return layers.back();
 }
 
-void NeuralNetwork::backPropagate(const std::vector<double>& inputs,
-                                 const std::vector<double>& targets) {
+std::vector<double> NeuralNetwork::backPropagate(const std::vector<double>& inputs,
+                                                  const std::vector<double>& targets) {
     // Forward pass
     feedForward(inputs);
     
@@ -113,6 +114,12 @@ void NeuralNetwork::backPropagate(const std::vector<double>& inputs,
             biases[i][j] += learningRate * errors[i + 1][j];
         }
     }
+
+    // feedForward(inputs) at the top of this function already computed and
+    // stored the network's output in layers.back(); returning it here lets
+    // train() reuse it instead of redundantly running a second forward pass
+    // per sample per epoch just to compute the training error.
+    return layers.back();
 }
 
 void NeuralNetwork::train(const std::vector<std::vector<double>>& inputs,
@@ -122,8 +129,7 @@ void NeuralNetwork::train(const std::vector<std::vector<double>>& inputs,
         double totalError = 0.0;
         
         for (size_t i = 0; i < inputs.size(); ++i) {
-            backPropagate(inputs[i], targets[i]);
-            auto output = feedForward(inputs[i]);
+            auto output = backPropagate(inputs[i], targets[i]);
             totalError += calculateError(output, targets[i]);
         }
         
@@ -153,5 +159,87 @@ void NeuralNetwork::printWeights() {
             std::cout << std::endl;
         }
         std::cout << std::endl;
+    }
+}
+
+void NeuralNetwork::saveModel(const std::string& filename) {
+    std::ofstream out(filename);
+    if (!out.is_open()) {
+        std::cerr << "Error: could not open " << filename << " for writing" << std::endl;
+        return;
+    }
+
+    // 17 significant decimal digits is the number required to round-trip
+    // any IEEE-754 double exactly (std::numeric_limits<double>::max_digits10).
+    // Without this, operator<<'s default 6-digit precision silently
+    // truncates every saved weight -- the model still "loads", it's just
+    // quietly a different (nearby, but not identical) network.
+    out << std::setprecision(17);
+
+    // Simple whitespace-separated text format: topology, then learning
+    // rate, then every weight and bias in the same nested order the
+    // constructor initializes them in.
+    out << topology.size() << "\n";
+    for (int size : topology) {
+        out << size << " ";
+    }
+    out << "\n" << learningRate << "\n";
+
+    for (const auto& layerWeights : weights) {
+        for (const auto& neuronWeights : layerWeights) {
+            for (double w : neuronWeights) {
+                out << w << " ";
+            }
+        }
+        out << "\n";
+    }
+
+    for (const auto& layerBiases : biases) {
+        for (double b : layerBiases) {
+            out << b << " ";
+        }
+        out << "\n";
+    }
+}
+
+void NeuralNetwork::loadModel(const std::string& filename) {
+    std::ifstream in(filename);
+    if (!in.is_open()) {
+        std::cerr << "Error: could not open " << filename << " for reading" << std::endl;
+        return;
+    }
+
+    std::size_t topologySize = 0;
+    in >> topologySize;
+
+    std::vector<int> loadedTopology(topologySize);
+    for (auto& size : loadedTopology) {
+        in >> size;
+    }
+
+    if (loadedTopology != topology) {
+        std::cerr << "Error: " << filename << " topology does not match this network's topology"
+                   << std::endl;
+        return;
+    }
+
+    in >> learningRate;
+
+    for (auto& layerWeights : weights) {
+        for (auto& neuronWeights : layerWeights) {
+            for (double& w : neuronWeights) {
+                in >> w;
+            }
+        }
+    }
+
+    for (auto& layerBiases : biases) {
+        for (double& b : layerBiases) {
+            in >> b;
+        }
+    }
+
+    if (!in) {
+        std::cerr << "Error: " << filename << " was truncated or malformed" << std::endl;
     }
 }
