@@ -26,41 +26,41 @@ int main() {
     };
     
     std::cout << "Training XOR Neural Network..." << std::endl;
-    nn.train(inputs, targets, 10000);
+    nn.Train(inputs, targets, 10000);
     
     std::cout << "\nTesting trained network:" << std::endl;
-    bool allCorrect = true;
+    bool all_correct = true;
     for (size_t i = 0; i < inputs.size(); ++i) {
-        auto output = nn.feedForward(inputs[i]);
+        auto output = nn.FeedForward(inputs[i]);
         double expected = targets[i][0];
         bool correct = std::abs(output[0] - expected) < 0.1;
-        allCorrect = allCorrect && correct;
+        all_correct = all_correct && correct;
 
         std::cout << "Input: [" << inputs[i][0] << ", " << inputs[i][1] << "] ";
         std::cout << "Expected: " << expected << " ";
         std::cout << "Got: " << output[0] << " ";
         std::cout << "[" << (correct ? "PASS" : "FAIL") << "]" << std::endl;
     }
-    std::cout << "\n[" << (allCorrect ? "PASS" : "FAIL") << "] network learned XOR within tolerance" << std::endl;
+    std::cout << "\n[" << (all_correct ? "PASS" : "FAIL") << "] network learned XOR within tolerance" << std::endl;
 
-    // Round-trip saveModel()/loadModel() through a fresh network with the
+    // Round-trip SaveModel()/LoadModel() through a fresh network with the
     // same topology, and confirm it reproduces identical predictions.
-    const std::string modelPath = "xor_model.txt";
-    nn.saveModel(modelPath);
+    const std::string kModelPath = "xor_model.txt";
+    nn.SaveModel(kModelPath);
 
     NeuralNetwork reloaded(topology, 0.5);
-    reloaded.loadModel(modelPath);
+    reloaded.LoadModel(kModelPath);
 
-    bool saveLoadMatches = true;
+    bool save_load_matches = true;
     for (size_t i = 0; i < inputs.size(); ++i) {
-        auto originalOutput = nn.feedForward(inputs[i]);
-        auto reloadedOutput = reloaded.feedForward(inputs[i]);
-        if (std::abs(originalOutput[0] - reloadedOutput[0]) > 1e-9) {
-            saveLoadMatches = false;
+        auto original_output = nn.FeedForward(inputs[i]);
+        auto reloaded_output = reloaded.FeedForward(inputs[i]);
+        if (std::abs(original_output[0] - reloaded_output[0]) > 1e-9) {
+            save_load_matches = false;
         }
     }
-    std::cout << "[" << (saveLoadMatches ? "PASS" : "FAIL")
-               << "] saveModel()/loadModel() round-trip reproduces identical predictions" << std::endl;
+    std::cout << "[" << (save_load_matches ? "PASS" : "FAIL")
+               << "] SaveModel()/LoadModel() round-trip reproduces identical predictions" << std::endl;
 
-    return (allCorrect && saveLoadMatches) ? 0 : 1;
+    return (all_correct && save_load_matches) ? 0 : 1;
 }

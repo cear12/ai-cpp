@@ -18,22 +18,22 @@ cmake --build build
 ```
 
 Trains on XOR (10,000 epochs) and prints a PASS/FAIL check for each of the
-4 input combinations, plus a round-trip check of `saveModel()`/`loadModel()`.
+4 input combinations, plus a round-trip check of `SaveModel()`/`LoadModel()`.
 **Verified locally**: converges to near-zero error and predicts XOR
 correctly (outputs within 0.1 of the 0/1 target) every run.
 
-A couple of real issues were fixed along the way: `saveModel()` was newly
+A couple of real issues were fixed along the way: `SaveModel()` was newly
 implemented (it was declared in the header but never defined anywhere), and
 its first version wrote weights with `ostream`'s default 6-digit precision,
-which silently truncated every saved value -- `loadModel()` would "succeed"
+which silently truncated every saved value -- `LoadModel()` would "succeed"
 but reconstruct a nearby, not identical, network. Fixed with
 `std::setprecision(17)` (`std::numeric_limits<double>::max_digits10`, the
 number of decimal digits required to round-trip a `double` exactly), and
 there's now a test that actually compares pre- and post-round-trip
 predictions bit-for-bit rather than just checking that loading didn't
-crash. `train()` also used to call `feedForward()` a second, redundant time
+crash. `Train()` also used to call `FeedForward()` a second, redundant time
 per sample per epoch just to compute the epoch's error, since
-`backPropagate()` already computes it internally; `backPropagate()` now
+`BackPropagate()` already computes it internally; `BackPropagate()` now
 returns that output directly instead.
 
 ## opencv-vision/

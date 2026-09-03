@@ -5,141 +5,141 @@
 #include <sstream>
 
 NeuralNetwork::NeuralNetwork(const std::vector<int>& topology, double lr)
-    : topology(topology), learningRate(lr), gen(std::random_device{}()), dis(-1.0, 1.0) {
+    : topology_(topology), learning_rate_(lr), gen_(std::random_device{}()), dis_(-1.0, 1.0) {
     
     // Initialize layers
-    layers.resize(topology.size());
+    layers_.resize(topology.size());
     for (size_t i = 0; i < topology.size(); ++i) {
-        layers[i].resize(topology[i]);
+        layers_[i].resize(topology[i]);
     }
     
     // Initialize weights and biases
-    weights.resize(topology.size() - 1);
-    biases.resize(topology.size() - 1);
+    weights_.resize(topology.size() - 1);
+    biases_.resize(topology.size() - 1);
     
     for (size_t i = 0; i < topology.size() - 1; ++i) {
-        weights[i].resize(topology[i]);
-        biases[i].resize(topology[i + 1]);
+        weights_[i].resize(topology[i]);
+        biases_[i].resize(topology[i + 1]);
         
         for (int j = 0; j < topology[i]; ++j) {
-            weights[i][j].resize(topology[i + 1]);
+            weights_[i][j].resize(topology[i + 1]);
             for (int k = 0; k < topology[i + 1]; ++k) {
-                weights[i][j][k] = dis(gen);
+                weights_[i][j][k] = dis_(gen_);
             }
         }
         
         for (int j = 0; j < topology[i + 1]; ++j) {
-            biases[i][j] = dis(gen);
+            biases_[i][j] = dis_(gen_);
         }
     }
 }
 
-double NeuralNetwork::sigmoid(double x) {
+double NeuralNetwork::Sigmoid(double x) {
     return 1.0 / (1.0 + std::exp(-x));
 }
 
-double NeuralNetwork::sigmoidDerivative(double x) {
+double NeuralNetwork::SigmoidDerivative(double x) {
     return x * (1.0 - x);
 }
 
-double NeuralNetwork::relu(double x) {
+double NeuralNetwork::Relu(double x) {
     return std::max(0.0, x);
 }
 
-double NeuralNetwork::reluDerivative(double x) {
+double NeuralNetwork::ReluDerivative(double x) {
     return x > 0 ? 1.0 : 0.0;
 }
 
-std::vector<double> NeuralNetwork::feedForward(const std::vector<double>& inputs) {
+std::vector<double> NeuralNetwork::FeedForward(const std::vector<double>& inputs) {
     // Set input layer
-    layers[0] = inputs;
+    layers_[0] = inputs;
     
     // Forward propagation
-    for (size_t i = 1; i < topology.size(); ++i) {
-        for (int j = 0; j < topology[i]; ++j) {
-            double sum = biases[i - 1][j];
-            for (int k = 0; k < topology[i - 1]; ++k) {
-                sum += layers[i - 1][k] * weights[i - 1][k][j];
+    for (size_t i = 1; i < topology_.size(); ++i) {
+        for (int j = 0; j < topology_[i]; ++j) {
+            double sum = biases_[i - 1][j];
+            for (int k = 0; k < topology_[i - 1]; ++k) {
+                sum += layers_[i - 1][k] * weights_[i - 1][k][j];
             }
             
             // Apply activation function (sigmoid for hidden layers, linear for output)
-            if (i == topology.size() - 1) {
-                layers[i][j] = sum; // Linear activation for output layer
+            if (i == topology_.size() - 1) {
+                layers_[i][j] = sum; // Linear activation for output layer
             } else {
-                layers[i][j] = sigmoid(sum); // Sigmoid for hidden layers
+                layers_[i][j] = Sigmoid(sum); // Sigmoid for hidden layers
             }
         }
     }
     
-    return layers.back();
+    return layers_.back();
 }
 
-std::vector<double> NeuralNetwork::backPropagate(const std::vector<double>& inputs,
+std::vector<double> NeuralNetwork::BackPropagate(const std::vector<double>& inputs,
                                                   const std::vector<double>& targets) {
     // Forward pass
-    feedForward(inputs);
+    FeedForward(inputs);
     
     // Calculate output layer errors
-    std::vector<std::vector<double>> errors(topology.size());
-    for (size_t i = 0; i < topology.size(); ++i) {
-        errors[i].resize(topology[i]);
+    std::vector<std::vector<double>> errors(topology_.size());
+    for (size_t i = 0; i < topology_.size(); ++i) {
+        errors[i].resize(topology_[i]);
     }
     
     // Output layer error
-    int outputLayer = topology.size() - 1;
-    for (int i = 0; i < topology[outputLayer]; ++i) {
-        errors[outputLayer][i] = targets[i] - layers[outputLayer][i];
+    int output_layer = topology_.size() - 1;
+    for (int i = 0; i < topology_[output_layer]; ++i) {
+        errors[output_layer][i] = targets[i] - layers_[output_layer][i];
     }
     
     // Hidden layers error (backpropagate)
-    for (int i = outputLayer - 1; i >= 1; --i) {
-        for (int j = 0; j < topology[i]; ++j) {
+    for (int i = output_layer - 1; i >= 1; --i) {
+        for (int j = 0; j < topology_[i]; ++j) {
             double error = 0.0;
-            for (int k = 0; k < topology[i + 1]; ++k) {
-                error += errors[i + 1][k] * weights[i][j][k];
+            for (int k = 0; k < topology_[i + 1]; ++k) {
+                error += errors[i + 1][k] * weights_[i][j][k];
             }
-            errors[i][j] = error * sigmoidDerivative(layers[i][j]);
+            errors[i][j] = error * SigmoidDerivative(layers_[i][j]);
         }
     }
     
     // Update weights and biases
-    for (size_t i = 0; i < weights.size(); ++i) {
-        for (int j = 0; j < topology[i]; ++j) {
-            for (int k = 0; k < topology[i + 1]; ++k) {
-                weights[i][j][k] += learningRate * errors[i + 1][k] * layers[i][j];
+    for (size_t i = 0; i < weights_.size(); ++i) {
+        for (int j = 0; j < topology_[i]; ++j) {
+            for (int k = 0; k < topology_[i + 1]; ++k) {
+                weights_[i][j][k] += learning_rate_ * errors[i + 1][k] * layers_[i][j];
             }
         }
         
-        for (int j = 0; j < topology[i + 1]; ++j) {
-            biases[i][j] += learningRate * errors[i + 1][j];
+        for (int j = 0; j < topology_[i + 1]; ++j) {
+            biases_[i][j] += learning_rate_ * errors[i + 1][j];
         }
     }
 
-    // feedForward(inputs) at the top of this function already computed and
-    // stored the network's output in layers.back(); returning it here lets
-    // train() reuse it instead of redundantly running a second forward pass
+    // FeedForward(inputs) at the top of this function already computed and
+    // stored the network's output in layers_.back(); returning it here lets
+    // Train() reuse it instead of redundantly running a second forward pass
     // per sample per epoch just to compute the training error.
-    return layers.back();
+    return layers_.back();
 }
 
-void NeuralNetwork::train(const std::vector<std::vector<double>>& inputs,
+void NeuralNetwork::Train(const std::vector<std::vector<double>>& inputs,
                          const std::vector<std::vector<double>>& targets,
                          int epochs) {
     for (int epoch = 0; epoch < epochs; ++epoch) {
-        double totalError = 0.0;
+        double total_error = 0.0;
         
         for (size_t i = 0; i < inputs.size(); ++i) {
-            auto output = backPropagate(inputs[i], targets[i]);
-            totalError += calculateError(output, targets[i]);
+            auto output = BackPropagate(inputs[i], targets[i]);
+            total_error += CalculateError(output, targets[i]);
         }
         
         if (epoch % 100 == 0) {
-            std::cout << "Epoch " << epoch << ", Error: " << totalError / inputs.size() << std::endl;
+            std::cout << "Epoch " << epoch << ", Error: " << total_error / inputs.size() << std::endl;
         }
     }
 }
 
-double NeuralNetwork::calculateError(const std::vector<double>& outputs,
+double NeuralNetwork::CalculateError(const std::vector<double>& outputs,
                                    const std::vector<double>& targets) {
     double error = 0.0;
     for (size_t i = 0; i < outputs.size(); ++i) {
@@ -149,12 +149,12 @@ double NeuralNetwork::calculateError(const std::vector<double>& outputs,
     return error * 0.5;
 }
 
-void NeuralNetwork::printWeights() {
-    for (size_t i = 0; i < weights.size(); ++i) {
+void NeuralNetwork::PrintWeights() {
+    for (size_t i = 0; i < weights_.size(); ++i) {
         std::cout << "Layer " << i << " -> " << i + 1 << " weights:" << std::endl;
-        for (size_t j = 0; j < weights[i].size(); ++j) {
-            for (size_t k = 0; k < weights[i][j].size(); ++k) {
-                std::cout << weights[i][j][k] << " ";
+        for (size_t j = 0; j < weights_[i].size(); ++j) {
+            for (size_t k = 0; k < weights_[i][j].size(); ++k) {
+                std::cout << weights_[i][j][k] << " ";
             }
             std::cout << std::endl;
         }
@@ -162,7 +162,7 @@ void NeuralNetwork::printWeights() {
     }
 }
 
-void NeuralNetwork::saveModel(const std::string& filename) {
+void NeuralNetwork::SaveModel(const std::string& filename) {
     std::ofstream out(filename);
     if (!out.is_open()) {
         std::cerr << "Error: could not open " << filename << " for writing" << std::endl;
@@ -179,62 +179,62 @@ void NeuralNetwork::saveModel(const std::string& filename) {
     // Simple whitespace-separated text format: topology, then learning
     // rate, then every weight and bias in the same nested order the
     // constructor initializes them in.
-    out << topology.size() << "\n";
-    for (int size : topology) {
+    out << topology_.size() << "\n";
+    for (int size : topology_) {
         out << size << " ";
     }
-    out << "\n" << learningRate << "\n";
+    out << "\n" << learning_rate_ << "\n";
 
-    for (const auto& layerWeights : weights) {
-        for (const auto& neuronWeights : layerWeights) {
-            for (double w : neuronWeights) {
+    for (const auto& layer_weights : weights_) {
+        for (const auto& neuron_weights : layer_weights) {
+            for (double w : neuron_weights) {
                 out << w << " ";
             }
         }
         out << "\n";
     }
 
-    for (const auto& layerBiases : biases) {
-        for (double b : layerBiases) {
+    for (const auto& layer_biases : biases_) {
+        for (double b : layer_biases) {
             out << b << " ";
         }
         out << "\n";
     }
 }
 
-void NeuralNetwork::loadModel(const std::string& filename) {
+void NeuralNetwork::LoadModel(const std::string& filename) {
     std::ifstream in(filename);
     if (!in.is_open()) {
         std::cerr << "Error: could not open " << filename << " for reading" << std::endl;
         return;
     }
 
-    std::size_t topologySize = 0;
-    in >> topologySize;
+    std::size_t topology_size = 0;
+    in >> topology_size;
 
-    std::vector<int> loadedTopology(topologySize);
-    for (auto& size : loadedTopology) {
+    std::vector<int> loaded_topology(topology_size);
+    for (auto& size : loaded_topology) {
         in >> size;
     }
 
-    if (loadedTopology != topology) {
+    if (loaded_topology != topology_) {
         std::cerr << "Error: " << filename << " topology does not match this network's topology"
                    << std::endl;
         return;
     }
 
-    in >> learningRate;
+    in >> learning_rate_;
 
-    for (auto& layerWeights : weights) {
-        for (auto& neuronWeights : layerWeights) {
-            for (double& w : neuronWeights) {
+    for (auto& layer_weights : weights_) {
+        for (auto& neuron_weights : layer_weights) {
+            for (double& w : neuron_weights) {
                 in >> w;
             }
         }
     }
 
-    for (auto& layerBiases : biases) {
-        for (double& b : layerBiases) {
+    for (auto& layer_biases : biases_) {
+        for (double& b : layer_biases) {
             in >> b;
         }
     }
