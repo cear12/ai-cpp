@@ -13,6 +13,10 @@ add_executable(neural_network
 )
 target_include_directories(neural_network PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
+# main() prints PASS/FAIL per XOR case and exits non-zero on failure.
+enable_testing()
+add_test(NAME xor_training COMMAND neural_network)
+
 if(MSVC)
     target_compile_options(neural_network PRIVATE /W4)
 else()
