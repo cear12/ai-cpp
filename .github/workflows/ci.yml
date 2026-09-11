@@ -2,63 +2,52 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
   neural-network:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Configure
-        run: cmake -S neural-network -B build-nn -DCMAKE_BUILD_TYPE=Release
-      - name: Build
-        run: cmake --build build-nn --config Release
-      - name: Run (trains XOR, prints PASS/FAIL per check, exits non-zero on failure)
-        shell: bash
-        run: |
-          if [ -f build-nn/Release/neural_network.exe ]; then
-            build-nn/Release/neural_network.exe
-          else
-            build-nn/neural_network
-          fi
+    # Needs enable_testing() + add_test(NAME xor COMMAND neural_network)
+    # in neural-network/CMakeLists.txt.
+    uses: cear12/ci-workflows/.github/workflows/cmake.yml@v1
+    with:
+      source-dir: neural-network
 
   opencv-vision:
-    # OpenCV (plus the contrib tracking module object-tracker.h needs) is a
-    # plain apt install on Ubuntu; getting it onto Windows/macOS runners
-    # needs extra third-party actions, so -- same call as protocols-cpp and
-    # qt-cpp elsewhere in this portfolio -- CI targets ubuntu-latest only.
+    # OpenCV is an apt install on Ubuntu; Windows/macOS would need vcpkg/brew
+    # builds of opencv4[contrib], so this job stays Linux-only (build check).
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - name: Install OpenCV (including contrib, for the tracking module)
+      - name: Install OpenCV (with contrib for the tracking module)
         run: |
           sudo apt-get update
-          sudo apt-get install -y libopencv-dev libopencv-contrib-dev opencv-data
+          sudo apt-get install -y --no-install-recommends libopencv-dev libopencv-contrib-dev opencv-data
 
-      - name: Populate data/ with Haar cascades from the system OpenCV install
+      - name: Copy Haar cascades into data/
         run: |
           mkdir -p opencv-vision/data
-          face=$(find /usr/share -iname 'haarcascade_frontalface_alt.xml' 2>/dev/null | head -1)
-          eyes=$(find /usr/share -iname 'haarcascade_eye_tree_eyeglasses.xml' 2>/dev/null | head -1)
-          if [ -n "$face" ]; then cp "$face" opencv-vision/data/; fi
-          if [ -n "$eyes" ]; then cp "$eyes" opencv-vision/data/; fi
+          for f in haarcascade_frontalface_alt.xml haarcascade_eye_tree_eyeglasses.xml; do
+            src=$(find /usr/share -iname "$f" 2>/dev/null | head -1)
+            [ -n "$src" ] && cp "$src" opencv-vision/data/
+          done
           ls -la opencv-vision/data/
 
       - name: Configure
         run: cmake -S opencv-vision -B build-cv -DCMAKE_BUILD_TYPE=Release
 
       - name: Build
-        run: cmake --build build-cv --config Release -j"$(nproc)"
+        run: cmake --build build-cv --parallel
 
-      # No camera/display in CI, so this only verifies the build -- see the
-      # repository README for what is and isn't exercised without real
-      # hardware and a display.
-      - name: Verify the binary was produced
+      - name: Binary exists
         run: test -x build-cv/opencv_vision
