@@ -17,17 +17,23 @@ cv::Scalar ObjectTracker::generateRandomColor() {
 void ObjectTracker::addTracker(const cv::Mat& frame, const cv::Rect2d& bbox) {
   cv::Ptr<cv::Tracker> tracker = cv::TrackerKCF::create();
 
-  if (tracker->init(frame, bbox)) {
-    trackers.push_back(tracker);
-    bounding_boxes.push_back(bbox);
-    colors.push_back(generateRandomColor());
-    std::cout << "Tracker " << trackers.size() << " initialized" << std::endl;
+  // Since OpenCV 4.5.1 Tracker::init() takes cv::Rect and returns void.
+  const cv::Rect roi(bbox);
+  if (roi.width <= 0 || roi.height <= 0) {
+    std::cerr << "Empty selection, tracker not added" << std::endl;
+    return;
   }
+  tracker->init(frame, roi);
+
+  trackers.push_back(tracker);
+  bounding_boxes.push_back(bbox);
+  colors.push_back(generateRandomColor());
+  std::cout << "Tracker " << trackers.size() << " initialized" << std::endl;
 }
 
 void ObjectTracker::updateTrackers(const cv::Mat& frame) {
   for (size_t i = 0; i < trackers.size(); ++i) {
-    cv::Rect2d bbox;
+    cv::Rect bbox;  // update() expects cv::Rect since OpenCV 4.5.1
     if (trackers[i]->update(frame, bbox)) {
       bounding_boxes[i] = bbox;
     } else {
